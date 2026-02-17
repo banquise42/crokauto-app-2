@@ -252,6 +252,260 @@ padding:10px;
 
 </div>
 
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CrokAuto</title>
+
+<link rel="icon" href="/icon.png">
+<link rel="apple-touch-icon" href="/icon.png">
+
+<style>
+body{margin:0;background:#0b0b0b;color:#fff;font-family:-apple-system,Arial}
+.top{
+position:sticky;
+top:0;
+background:#ff7a00;
+color:#000;
+padding:12px;
+text-align:center;
+font-weight:bold;
+font-size:20px;
+box-shadow:0 5px 15px rgba(0,0,0,.5)
+}
+.wrap{max-width:520px;margin:auto;padding:10px}
+
+.card{background:#151515;border-radius:18px;padding:15px;margin-top:10px;box-shadow:0 10px 25px rgba(0,0,0,.5)}
+.label{color:#aaa;font-size:13px}
+.value{font-size:28px;font-weight:bold}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{border:none;border-radius:16px;padding:16px;font-size:18px;font-weight:bold;cursor:pointer}
+.green{background:#2DF006;color:#000}
+.red{background:#c0392b;color:#fff}
+.orange{background:#ff7a00;color:#000}
+.blue{background:#2980b9;color:#fff}
+.purple{background:#C472CC;color:#000}
+.gold{background:#FFD700;color:#000}
+.gray{background:#333;color:#fff}
+
+.tabs{
+display:grid;
+grid-template-columns:repeat(3,1fr);
+gap:8px;
+margin-top:10px;
+}
+
+.tab{
+height:42px;
+display:flex;
+align-items:center;
+justify-content:center;
+border-radius:14px;
+background:#222;
+font-weight:bold;
+cursor:pointer;
+font-size:14px;
+}
+
+.tab.active{background:#ff7a00;color:#000}
+
+.hidden{display:none !important}
+#editor{display:none}
+#editor.show{display:flex !important}
+input{width:100%;padding:12px;border-radius:12px;border:none;font-size:18px;margin-top:6px}
+.small{font-size:13px;color:#aaa;margin-top:6px}
+.dot{
+width:10px;
+height:10px;
+border-radius:50%;
+display:inline-block;
+margin-right:6px;
+background:transparent;
+}
+
+.dot.on{
+background:#2DF006;
+}
+</style>
+  
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+</head>
+
+<body>
+<div class="top">🐾 CrokAuto 🐾</div>
+
+<div class="wrap">
+
+<div class="tabs">
+<div id="tabHome" class="tab active" onclick="showTab('home')">🏠 Accueil</div>
+<div id="tabSettings" class="tab" onclick="showTab('settings')">⚙️ Paramètres</div>
+</div>
+
+<!-- ================= ACCUEIL ================= -->
+
+<div id="homePanel">
+
+<div class="card">
+<div class="label">État</div>
+<div class="value" id="status">---</div>
+
+<div class="label">Poids réserve</div>
+<div class="value"><span id="weight">0</span> g</div>
+
+<div class="label">Ration cible</div>
+<div class="value"><span id="target">0</span> g</div>
+</div>
+
+<div class="card">
+<button class="btn blue" onclick="toggleAuto()" style="width:100%">
+<span id="autoDot" class="dot"></span>
+🤖 Distribution Auto
+</button>
+</div>
+
+<div class="card grid">
+<button class="btn green" onclick="cmd('dist')">🍽 Distribution</button>
+<button class="btn red" onclick="cmd('stop')">⛔ STOP</button>
+<button class="btn purple" onclick="showHistory()">📜 Historique</button>
+<button id="lampBtn" class="btn gold" onclick="toggleLamp()">
+<span id="lampDot" class="dot"></span>💡 Lampe
+</button>
+</div>
+  
+<div class="card">
+  <div class="label">Historique distributions</div>
+  <div id="historyBox" class="small"></div>
+</div>
+
+<div class="card">
+<div class="label">Définir poids de la ration</div>
+
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+<input id="setg" type="number" style="width:70px;text-align:center">
+<div class="small">grammes</div>
+</div>
+
+<button class="btn green" onclick="setRation()">Valider</button>
+</div>
+
+</div>
+
+<!-- ================= PARAMÈTRES ================= -->
+
+<div id="settingsPanel" class="hidden">
+
+<div class="tabs">
+<div id="subPlan" class="tab active" onclick="showSub('plan')">📅 Planning</div>
+<div id="subLamp" class="tab" onclick="showSub('lamp')">💡Tempo Lampe</div>
+<div id="subMail" class="tab" onclick="showSub('mail')">💌 Email</div>
+<div id="subWifi" class="tab" onclick="showSub('wifi')">📡 WiFi</div>
+<div id="subMaint" class="tab" onclick="showSub('maint')">🛠 Maintenance</div>
+</div>
+
+<!-- ===== PLANNING ===== -->
+<div id="panelPlan" class="card">
+<div class="label">Planning automatique</div>
+<button class="btn orange" onclick="addProg()">+ Ajouter programme</button>
+<div id="progList"></div>
+</div>
+
+<!-- ===== WIFI ===== -->
+<div id="panelWifi" class="card hidden">
+<button class="btn red" onclick="resetWifi()">Reset WiFi</button>
+</div>
+
+<!-- ===== MAIL ===== -->
+<div id="panelMail" class="card hidden">
+<input id="sender" placeholder="Email envoi">
+<input id="password" placeholder="Mot de passe">
+<input id="recipient" placeholder="Email réception">
+<input id="threshold" placeholder="Seuil alerte">
+<button class="btn gold" onclick="saveMail()">Sauvegarder</button>
+<button class="btn gold" onclick="mailTest()">Test mail</button>
+</div>
+
+<!-- ===== LAMPE ===== -->
+<div id="panelLamp" class="card hidden">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+<input id="lampMinutes" type="number" placeholder="Durée"
+style="width:70px"
+onfocus="lampEditing=true"
+onblur="lampEditing=false">
+<div class="small">minutes</div>
+</div>
+
+<button class="btn gold" onclick="saveLampDur()">Sauvegarder</button>
+</div>
+
+<!-- ===== MAINTENANCE ===== -->
+<div id="panelMaint" class="card hidden">
+<div class="grid" style="grid-template-columns:1fr 1fr">
+
+<button class="btn" style="background:#ff7a00;color:white" onclick="cmd('vid')">
+<span id="vidDot" class="dot"></span>🧹 Vidange
+</button>
+
+<button class="btn red" onclick="cmd('stop')">⛔ STOP</button>
+
+<button class="btn blue" onclick="tare()">⚖️ TARE</button>
+
+<button class="btn gray" onclick="window.location='/'">Retour</button>
+
+</div>
+</div>
+</div>
+
+<div id="editor" class="hidden" onclick="closeEdit()" style="
+position:fixed;
+top:0;left:0;right:0;bottom:0;
+background:#000a;
+align-items:center;
+justify-content:center;
+z-index:99;
+">
+
+<div class="card" onclick="event.stopPropagation()" style="width:90%;max-width:380px">
+
+<div class="label">Heure</div>
+
+<div style="display:flex;gap:10px">
+<input id="editT" type="time">
+
+</div>
+
+<div class="label">Jours</div>
+
+<div id="dayBtns" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:8px"></div>
+
+<button class="btn green" onclick="saveEdit()">Sauver</button>
+<button class="btn gray" onclick="closeEdit()">Annuler</button>
+
+</div>
+  
+</div>
+<div id="historyPanel" class="hidden" style="
+position:fixed;
+top:0;left:0;right:0;bottom:0;
+background:#000c;
+overflow:auto;
+z-index:999;
+padding:10px;
+">
+
+<div class="card">
+<div class="value">📜 Historique</div>
+<div id="historyList"></div>
+
+<button class="btn red" onclick="clearHistory()">Effacer</button>
+<button class="btn gray" onclick="hideHistory()">Fermer</button>
+</div>
+
+</div>
+
 <script>
 let lampEditing = false;
 let scheduleEditing = false;
@@ -358,6 +612,12 @@ api('/api/clearhistory');
 }
   
 </script>
+
+
+</div>
+
+</body>
+</html>
 
 
 </div>
