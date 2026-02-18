@@ -21,6 +21,9 @@ body{margin:0;background:#0b0b0b;color:#fff;font-family:-apple-system,Arial}
 .hidden{display:none !important}
 .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px}
 .dot.on{background:#2DF006}
+.small{font-size:13px;color:#aaa;margin-top:6px}
+.gray{background:#333;color:#fff}
+
 </style>
 
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
@@ -43,12 +46,32 @@ body{margin:0;background:#0b0b0b;color:#fff;font-family:-apple-system,Arial}
 <div class="value"><span id="target">0</span> g</div>
 </div>
 
+<!-- BOUTON AUTO -->
+<div class="card">
+<button class="btn blue" onclick="toggleAuto()" style="width:100%">
+<span id="autoDot" class="dot"></span>
+🤖 Distribution Auto
+</button>
+</div>
+
+<!-- BOUTONS ACTION -->
 <div class="card grid">
 <button class="btn green" onclick="cmd('dist')">🍽 Distribution</button>
 <button class="btn red" onclick="cmd('stop')">⛔ STOP</button>
 <button class="btn gold" onclick="toggleLamp()">
 <span id="lampDot" class="dot"></span>💡 Lampe
 </button>
+<button class="btn blue" onclick="showHistory()">📜 Historique</button>
+</div>
+<div class="card">
+<div class="label">Définir poids de la ration</div>
+
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+<input id="setg" type="number" style="width:70px;text-align:center">
+<div class="small">grammes</div>
+</div>
+
+<button class="btn green" onclick="setRation()">Valider</button>
 </div>
 
 </div>
@@ -77,18 +100,67 @@ client.publish("crok/"+deviceID+"/cmd",cmd);
 
 function cmd(c){api(c);}
 function toggleLamp(){api("lamp");}
+function toggleAuto(){
+  api("auto");
+}
+  
+function setRation(){
+  const g = document.getElementById("setg").value;
+  api("set:"+g);
+}
+  
+function showHistory(){
+document.getElementById("historyPanel").classList.remove("hidden");
+}
+
+function hideHistory(){
+document.getElementById("historyPanel").classList.add("hidden");
+}
+
+function clearHistory(){
+api("clearhistory");
+}
 
 setInterval(()=>{
 if(!lastStatus) return;
 
-status.innerText=lastStatus.state;
-weight.innerText=lastStatus.weight.toFixed(1);
-target.innerText=lastStatus.target.toFixed(1);
+document.getElementById("status").innerText = lastStatus.state;
+document.getElementById("weight").innerText = lastStatus.weight.toFixed(1);
+document.getElementById("target").innerText = lastStatus.target.toFixed(1);
+if(lastStatus.history){
+document.getElementById("historyList").innerHTML =
+lastStatus.history.map(h=>"<div>"+h+"</div>").join("");
+}
 
-lampDot.classList.toggle("on",lastStatus.lamp==="ON");
+// voyant lampe
+document.getElementById("lampDot")
+.classList.toggle("on", lastStatus.lamp === "ON");
+
+// voyant auto
+document.getElementById("autoDot").style.background =
+(lastStatus.auto === "ON") ? "#2DF006" : "#c0392b";
 
 },1000);
+
 </script>
+<div id="historyPanel" class="hidden" style="
+position:fixed;
+top:0;left:0;right:0;bottom:0;
+background:#000c;
+overflow:auto;
+z-index:999;
+padding:10px;
+">
+
+<div class="card">
+<div class="value">📜 Historique</div>
+<div id="historyList"></div>
+
+<button class="btn red" onclick="clearHistory()">Effacer</button>
+<button class="btn gray" onclick="hideHistory()">Fermer</button>
+</div>
+
+</div>
 
 </body>
 </html>
